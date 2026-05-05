@@ -54,6 +54,10 @@ Một ứng dụng quản lý công nợ hiện đại, bảo mật và trực q
    ```
    *Hệ thống sẽ tự động khởi tạo các bảng cần thiết và dữ liệu mẫu khi chạy lần đầu.*
 
+3. **Quản lý Cơ sở dữ liệu (Online):**
+   - Nếu sử dụng FreeDB, bạn có thể truy cập quản lý dữ liệu tại: [https://pma.freedb.tech/](https://pma.freedb.tech/)
+   - Thông tin: Server: `sql.freedb.tech` | User: `u_CnYAf8`.
+
 4. **Xây dựng bản sản xuất:**
    ```bash
    npm run build

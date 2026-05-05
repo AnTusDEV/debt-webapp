@@ -19,10 +19,10 @@ app.use(express.json());
 
 // Database configuration
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'debt_tracker',
+  host: process.env.DB_HOST || 'sql.freedb.tech',
+  user: process.env.DB_USER || 'u_CnYAf8',
+  password: process.env.DB_PASS || 'xzh9p9vNPI2F',
+  database: process.env.DB_NAME || 'freedb_debt_tracker', // Check your FreeDB dashboard for the exact name
 };
 
 const JWT_SECRET = process.env.JWT_SECRET || 'debt-tracker-secret-key';
