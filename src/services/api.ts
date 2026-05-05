@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-const API_BASE = '/api';
+import { getApiUrl } from './config';
 
 export const api = {
   getToken: () => localStorage.getItem('debt_tracker_token'),
@@ -18,7 +18,7 @@ export const api = {
       ...options.headers,
     };
 
-    const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+    const response = await fetch(getApiUrl(endpoint), { ...options, headers });
     
     if (response.status === 401 || response.status === 403) {
       this.clearToken();
