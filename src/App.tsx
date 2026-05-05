@@ -46,9 +46,11 @@ export default function App() {
   const [debtors, setDebtors] = useState<Debtor[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
   const [adminStats, setAdminStats] = useState<any>(null);
+  const [usersList, setUsersList] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDebtOpen, setIsAddDebtOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'dashboard' | 'aggregated'>('dashboard');
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'dashboard' | 'history' | 'debtors' | 'users'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'paid'>('all');
   
@@ -57,7 +59,17 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [selectedDebtorId, setSelectedDebtorId] = useState<number | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Show notification for 3 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+ 
   // Add debt form state
   const [newDebt, setNewDebt] = useState({
     debtorName: '',
@@ -67,6 +79,14 @@ export default function App() {
     email: '',
     area: '',
     debt_date: new Date().toISOString().split('T')[0]
+  });
+
+  // Add user form state
+  const [newUser, setNewUser] = useState({
+    username: '',
+    password: '',
+    fullname: '',
+    role: 'user' as 'admin' | 'user'
   });
 
   useEffect(() => {
@@ -103,13 +123,15 @@ export default function App() {
       const promises: any[] = [api.getDebtors(), api.getDebts(), api.getAreas()];
       if (user.role === 'admin') {
         promises.push(api.getAdminStats());
+        promises.push(api.getAdminUsers());
       }
       
-      const [debtorsData, debtsData, areasData, statsData] = await Promise.all(promises);
+      const [debtorsData, debtsData, areasData, statsData, usersData] = await Promise.all(promises);
       setDebtors(debtorsData);
       setDebts(debtsData || []);
       setAreas(areasData || []);
       if (statsData) setAdminStats(statsData);
+      if (usersData) setUsersList(usersData);
     } catch (error) {
       console.error('Lỗi khi tải dữ liệu:', error);
     }
@@ -156,8 +178,9 @@ export default function App() {
         debt_date: new Date().toISOString().split('T')[0]
       });
       await fetchData();
+      setNotification({ message: 'Đã thêm khoản nợ thành công', type: 'success' });
     } catch (error) {
-      alert('Không thể thêm khoản nợ');
+      setNotification({ message: 'Không thể thêm khoản nợ', type: 'error' });
     }
   };
 
@@ -166,18 +189,37 @@ export default function App() {
     try {
       await api.updateDebtStatus(debt.id, newStatus);
       await fetchData();
+      setNotification({ message: 'Đã cập nhật trạng thái', type: 'success' });
     } catch (error) {
-      alert('Không thể cập nhật trạng thái');
+      setNotification({ message: 'Không thể cập nhật trạng thái', type: 'error' });
     }
   };
 
   const handlePayAll = async (debtorId: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn đánh dấu tất cả các khoản nợ của người này là đã thanh toán?')) return;
     try {
       await api.payAllDebts(debtorId);
       await fetchData();
+      setNotification({ message: 'Đã thanh toán toàn bộ cho người này', type: 'success' });
     } catch (error) {
-      alert('Không thể cập nhật trạng thái');
+      setNotification({ message: 'Không thể cập nhật trạng thái', type: 'error' });
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.addAdminUser(newUser);
+      setIsAddUserOpen(false);
+      setNewUser({
+        username: '',
+        password: '',
+        fullname: '',
+        role: 'user'
+      });
+      await fetchData();
+      setNotification({ message: 'Đã tạo người dùng mới thành công', type: 'success' });
+    } catch (error: any) {
+      setNotification({ message: error.response?.data?.message || 'Không thể tạo người dùng', type: 'error' });
     }
   };
 
@@ -234,9 +276,11 @@ export default function App() {
         >
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-8">
             <div className="flex flex-col items-center mb-8">
-              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-200/50 mb-4">D</div>
-              <h1 className="text-xl font-bold text-slate-900">Quản lý Công nợ</h1>
-              <p className="text-sm text-slate-500 mt-1">Đăng nhập để tiếp tục</p>
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-200/50 mb-4 transition-transform hover:scale-105 duration-300">
+                <BarChart3 className="w-8 h-8" />
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Sổ Nợ Thông Minh</h1>
+              <p className="text-sm text-slate-500 mt-1 font-medium italic">Hệ thống quản lý tài chính chuyên nghiệp</p>
             </div>
             
             <form onSubmit={handleLogin} className="space-y-4">
@@ -295,10 +339,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50/50 text-slate-900 font-sans selection:bg-blue-100 flex flex-col md:h-screen">
       {/* Navigation */}
-      <nav className="h-16 bg-white border-b border-slate-200/60 flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-20 sticky top-0">
+      <nav className="h-16 bg-white border-b border-slate-200/60 flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-20">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shrink-0 shadow-sm">D</div>
-          <span className="text-lg font-bold tracking-tight text-slate-900 hidden sm:block">Quản lý Công nợ</span>
+          <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200/50">
+            <BarChart3 className="w-5 h-5" />
+          </div>
+          <span className="text-lg font-bold tracking-tight text-slate-900 hidden sm:block">
+            {user.fullname || 'Quản lý Công nợ'}
+          </span>
         </div>
         
         <div className="hidden md:flex items-center bg-slate-50 rounded-xl px-3 py-1.5 border border-slate-200/60 w-80 group focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500/50 transition-all">
@@ -327,6 +375,51 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-slate-50">
         <div className="p-4 md:p-8 w-full max-w-7xl mx-auto space-y-8 pb-20">
+          {user.role !== 'admin' && (
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b border-slate-100 md:relative md:top-0 md:z-0 md:bg-transparent md:mx-0 md:px-0 md:py-0 md:border-none md:gap-2 md:mb-2">
+              <button 
+                onClick={() => setViewMode('dashboard')}
+                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'dashboard' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
+              >
+                <PieIcon className="w-3.5 h-3.5 hidden md:block" />
+                Tổng quan
+              </button>
+              <button 
+                onClick={() => setViewMode('history')}
+                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'history' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
+              >
+                <Clock className="w-3.5 h-3.5 hidden md:block" />
+                Dòng tiền nợ
+              </button>
+              <button 
+                onClick={() => setViewMode('debtors')}
+                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'debtors' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
+              >
+                <UserIcon className="w-3.5 h-3.5 hidden md:block" />
+                Người sổ nợ
+              </button>
+            </div>
+          )}
+
+          {user.role === 'admin' && (
+             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b border-slate-100 md:relative md:top-0 md:z-0 md:bg-transparent md:mx-0 md:px-0 md:py-0 md:border-none md:gap-2 md:mb-2">
+              <button 
+                onClick={() => setViewMode('dashboard')}
+                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'dashboard' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                Hệ thống
+              </button>
+              <button 
+                onClick={() => setViewMode('users')}
+                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'users' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
+              >
+                <UserIcon className="w-3.5 h-3.5" />
+                Người dùng
+              </button>
+            </div>
+          )}
+
           {viewMode === 'dashboard' ? (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               {/* KPI Cards Section */}
@@ -661,24 +754,55 @@ export default function App() {
                       <thead className="text-[10px] text-slate-400 uppercase bg-white sticky top-0 z-[1] border-b border-slate-100">
                         <tr>
                           <th className="px-4 py-4 font-bold tracking-widest">Người nợ</th>
+                          <th className="px-4 py-4 font-bold tracking-widest text-center">Thời gian</th>
                           <th className="px-4 py-4 font-bold tracking-widest text-right">Dư nợ</th>
                           <th className="px-4 py-4 font-bold tracking-widest hidden sm:table-cell text-right">Khu vực</th>
                         </tr>
                       </thead>
                       <tbody className="text-sm divide-y divide-slate-50">
-                        {aggregatedDebts.filter(d => d.total_pending > 0).map((item) => (
-                          <tr key={item.debtor_id} className="hover:bg-slate-50/40 transition-colors group">
-                            <td className="px-4 py-5">
-                              <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{item.name}</div>
-                            </td>
-                            <td className="px-4 py-5 font-bold text-right text-rose-600 tabular-nums">
-                              {item.total_pending.toLocaleString('en-US', { maximumFractionDigits: 0 })}đ
-                            </td>
-                            <td className="px-4 py-5 text-slate-400 text-[11px] hidden sm:table-cell text-right font-medium italic">
-                              {item.area || '—'}
-                            </td>
-                          </tr>
-                        ))}
+                        {aggregatedDebts.filter(d => d.total_pending > 0).map((item) => {
+                          const debtorPendingDebts = debts.filter(d => d.debtor_id === item.debtor_id && d.status === 'pending');
+                          let dateDisplay = '—';
+                          if (debtorPendingDebts.length > 0) {
+                            const dates = debtorPendingDebts.map(d => new Date(d.created_at).getTime());
+                            const minDate = new Date(Math.min(...dates));
+                            const maxDate = new Date(Math.max(...dates));
+                            if (minDate.getTime() === maxDate.getTime()) {
+                              dateDisplay = (
+                                <div className="flex flex-col items-center">
+                                  <span className="font-bold text-slate-700">{minDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                  <span className="text-slate-400">{minDate.toLocaleDateString('vi-VN')}</span>
+                                </div>
+                              );
+                            } else {
+                              const minStr = minDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+                              const maxStr = maxDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+                              dateDisplay = (
+                                <div className="flex flex-col items-center">
+                                  <span className="font-bold text-slate-700">Giai đoạn</span>
+                                  <span className="text-slate-400">{minStr} - {maxStr}</span>
+                                </div>
+                              );
+                            }
+                          }
+
+                          return (
+                            <tr key={item.debtor_id} className="hover:bg-slate-50/40 transition-colors group">
+                              <td className="px-4 py-5">
+                                <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{item.name}</div>
+                              </td>
+                              <td className="px-4 py-5 text-center text-[10px] text-slate-400 font-medium tabular-nums leading-relaxed">
+                                {dateDisplay}
+                              </td>
+                              <td className="px-4 py-5 font-bold text-right text-rose-600 tabular-nums">
+                                {item.total_pending.toLocaleString('en-US', { maximumFractionDigits: 0 })}đ
+                              </td>
+                              <td className="px-4 py-5 text-slate-400 text-[11px] hidden sm:table-cell text-right font-medium italic">
+                                {item.area || '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
@@ -686,7 +810,74 @@ export default function App() {
               </div>
             )}
           </div>
-        ) : (
+        ) : viewMode === 'users' ? (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Danh sách người dùng</h2>
+                <p className="text-sm text-slate-500 font-medium">Quản trị viên và người dùng trong hệ thống</p>
+              </div>
+              <button 
+                onClick={() => setIsAddUserOpen(true)}
+                className="bg-blue-600 text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
+              >
+                <Plus className="w-5 h-5" />
+                THÊM NGƯỜI DÙNG
+              </button>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
+               <table className="w-full text-left border-collapse">
+                  <thead className="text-[10px] text-slate-400 font-bold uppercase bg-slate-50/50 border-b border-slate-100">
+                    <tr>
+                      <th className="px-6 py-4 tracking-widest">Họ và tên</th>
+                      <th className="px-6 py-4 tracking-widest">Tài khoản</th>
+                      <th className="px-6 py-4 tracking-widest">Vai trò</th>
+                      <th className="px-6 py-4 tracking-widest text-right">Ngày tham gia</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm divide-y divide-slate-50">
+                    {usersList.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-20 text-center text-slate-400">
+                          <p className="font-medium">Chưa có người dùng nào</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      usersList.map((u) => (
+                        <tr key={u.id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+                                {u.fullname?.charAt(0).toUpperCase() || u.username.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900 tracking-tight">{u.fullname || u.username}</div>
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">{u.id}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 font-medium text-slate-600">{u.username}</td>
+                          <td className="px-6 py-5">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                              u.role === 'admin' 
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-100' 
+                                : 'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}>
+                              {u.role}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-right text-slate-400 text-xs font-medium tabular-nums">
+                            {new Date(u.created_at).toLocaleDateString('vi-VN')}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+               </table>
+            </div>
+          </div>
+        ) : viewMode === 'history' ? (
           <div className="flex-1 flex flex-col gap-5 overflow-hidden">
             <div className="bg-white rounded-2xl border border-slate-200/60 p-5 flex flex-col lg:flex-row justify-between items-center shadow-sm shadow-slate-200/40 gap-4">
               <div className="flex items-center gap-4 w-full lg:w-auto">
@@ -731,14 +922,15 @@ export default function App() {
                     <tr>
                       <th className="px-6 py-4 tracking-widest">Người nợ / Nội dung</th>
                       <th className="px-6 py-4 tracking-widest text-right">Số tiền</th>
-                      <th className="px-6 py-4 tracking-widest hidden sm:table-cell text-center">Ghi nhận / Trả</th>
-                      <th className="px-6 py-4 tracking-widest text-center">Trạng thái</th>
+                      <th className="px-6 py-4 tracking-widest hidden sm:table-cell text-center">Ngày ghi nợ</th>
+                      <th className="px-6 py-4 tracking-widest hidden sm:table-cell text-center">Ngày thanh toán</th>
+                      <th className="px-6 py-4 tracking-widest text-center">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm divide-y divide-slate-50">
                     {filteredDebts.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-20 text-center text-slate-400">
+                        <td colSpan={5} className="px-6 py-20 text-center text-slate-400">
                           <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <AlertCircle className="w-8 h-8 opacity-20" />
                           </div>
@@ -758,26 +950,46 @@ export default function App() {
                           <td className="px-6 py-5 text-right font-bold text-slate-900 tabular-nums text-base">
                             {Number(debt.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}đ
                           </td>
-                          <td className="px-6 py-5 text-center text-[10px] text-slate-500 hidden sm:table-cell">
-                            <div className="flex flex-col gap-1 items-center">
-                              <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-600 font-medium whitespace-nowrap">N: {new Date(debt.debt_date).toLocaleDateString('vi-VN')}</span>
-                              {debt.status === 'paid' && debt.paid_at && (
-                                <span className="px-2 py-0.5 bg-emerald-50 rounded text-emerald-600 font-medium whitespace-nowrap">T: {new Date(debt.paid_at).toLocaleDateString('vi-VN')}</span>
-                              )}
+                          <td className="px-6 py-5 text-center text-[11px] text-slate-500 hidden sm:table-cell tabular-nums">
+                            <div className="flex flex-col items-center">
+                              <span className="font-bold text-slate-700">{new Date(debt.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-slate-400">{new Date(debt.created_at).toLocaleDateString('vi-VN')}</span>
                             </div>
                           </td>
+                          <td className="px-6 py-5 text-center text-[11px] text-slate-500 hidden sm:table-cell tabular-nums">
+                            {debt.status === 'paid' && debt.paid_at ? (
+                              <div className="flex flex-col items-center">
+                                <span className="font-bold text-slate-700">{new Date(debt.paid_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="text-slate-400">{new Date(debt.paid_at).toLocaleDateString('vi-VN')}</span>
+                              </div>
+                            ) : '—'}
+                          </td>
                           <td className="px-6 py-5 text-center">
-                            <button 
-                              onClick={() => toggleStatus(debt)}
-                              className={`
-                                px-4 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all shadow-sm
-                                ${debt.status === 'paid' 
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100' 
-                                  : 'bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100'}
-                              `}
-                            >
-                              {debt.status === 'paid' ? 'Đã thanh toán' : 'Chưa thu hồi'}
-                            </button>
+                            <div className="flex items-center justify-center gap-2">
+                              {debt.status === 'pending' ? (
+                                <button 
+                                  onClick={() => toggleStatus(debt)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase shadow-sm shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Xác nhận thanh toán
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="px-4 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[10px] font-bold uppercase flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Đã thanh toán
+                                  </span>
+                                  <button 
+                                    onClick={() => toggleStatus(debt)}
+                                    className="p-1 text-slate-300 hover:text-slate-500 transition-colors"
+                                    title="Chuyển về chưa thanh toán"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -785,6 +997,137 @@ export default function App() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-8 bg-white rounded-3xl border border-slate-200/60 shadow-sm shadow-slate-200/40 overflow-hidden flex flex-col min-h-[500px]">
+               <div className="px-6 py-5 border-b border-slate-100/80 flex justify-between items-center bg-slate-50/30">
+                  <div className="flex items-center gap-4">
+                    <div className="w-1.5 h-5 bg-blue-600 rounded-full"></div>
+                    <h3 className="font-bold text-slate-900 tracking-tight text-lg">Người sổ nợ</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 font-bold bg-white px-3 py-1 rounded-full border border-slate-100 shadow-sm">
+                    {debtors.length} NGƯỜI TRONG DANH BẠ
+                  </p>
+               </div>
+               <div className="overflow-auto flex-1">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="text-[10px] text-slate-400 font-bold uppercase bg-slate-50/50 sticky top-0 z-[1] border-b border-slate-100">
+                      <tr>
+                        <th className="px-6 py-4 tracking-widest">Họ và tên</th>
+                        <th className="px-6 py-4 tracking-widest hidden sm:table-cell">Khu vực</th>
+                        <th className="px-6 py-4 tracking-widest text-right">Tổng nợ tồn</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm divide-y divide-slate-50">
+                      {debtors.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-6 py-20 text-center text-slate-400">
+                            <p className="font-medium">Chưa có người nợ nào trong danh sách</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        debtors.map((debtor) => {
+                          const debtorAgg = aggregatedDebts.find(d => d.debtor_id === debtor.id);
+                          const isSelected = selectedDebtorId === debtor.id;
+                          
+                          return (
+                            <tr 
+                              key={debtor.id} 
+                              onClick={() => setSelectedDebtorId(debtor.id)}
+                              className={`cursor-pointer transition-all group ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/50'}`}
+                            >
+                              <td className="px-6 py-5">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600'}`}>
+                                    {debtor.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-slate-900 uppercase text-[13px] tracking-tight">{debtor.name}</div>
+                                    {debtor.phone && <div className="text-[10px] text-slate-400 mt-0.5">{debtor.phone}</div>}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-5 text-slate-500 hidden sm:table-cell text-xs italic">
+                                {debtor.area || '—'}
+                              </td>
+                              <td className="px-6 py-5 text-right font-bold text-slate-900 tracking-tight tabular-nums text-base">
+                                {debtorAgg ? `${Number(debtorAgg.total_pending).toLocaleString('en-US')}đ` : '0đ'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+               </div>
+            </div>
+
+            <div className="lg:col-span-4 space-y-6 sticky top-24">
+              {selectedDebtorId ? (() => {
+                const debtor = debtors.find(d => d.id === selectedDebtorId);
+                const agg = aggregatedDebts.find(a => a.debtor_id === selectedDebtorId);
+                const pendingCount = debts.filter(d => d.debtor_id === selectedDebtorId && d.status === 'pending').length;
+                
+                return (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white rounded-3xl border border-blue-200/50 shadow-xl shadow-blue-900/5 p-6 flex flex-col gap-6"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="bg-blue-50 text-blue-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                        Chi tiết chọn
+                      </div>
+                      <button onClick={() => setSelectedDebtorId(null)} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{debtor?.name}</h4>
+                      <p className="text-sm text-slate-500 font-medium">{debtor?.area ? `Khu vực: ${debtor.area}` : 'Không có thông tin khu vực'}</p>
+                    </div>
+
+                    <div className="bg-slate-900 rounded-2xl p-6 text-white text-center relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full -mr-16 -mt-16 blur-2xl transition-all group-hover:bg-blue-600/30"></div>
+                      <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-slate-400 mb-2">Số tiền cần thanh toán</p>
+                      <div className="text-4xl font-black tracking-tight tabular-nums">
+                        {agg ? Number(agg.total_pending).toLocaleString('en-US') : '0'}
+                        <span className="text-lg ml-1 text-slate-500">đ</span>
+                      </div>
+                      <div className="mt-4 flex items-center justify-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tồn {pendingCount} khoản nợ</span>
+                      </div>
+                    </div>
+
+                    {pendingCount > 0 && (
+                      <button 
+                        onClick={() => handlePayAll(selectedDebtorId)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        THANH TOÁN TẤT CẢ
+                      </button>
+                    )}
+
+                    <div className="pt-4 border-t border-slate-100">
+                       <p className="text-[10px] text-slate-400 font-medium text-center italic">
+                        Chọn một người khác bên trái để xem thông tin
+                       </p>
+                    </div>
+                  </motion.div>
+                );
+              })() : (
+                <div className="bg-slate-100/50 rounded-3xl border-2 border-dashed border-slate-200 p-12 text-center flex flex-col items-center justify-center gap-4 text-slate-400">
+                   <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm">
+                      <UserIcon className="w-8 h-8 opacity-20" />
+                   </div>
+                   <p className="text-sm font-bold uppercase tracking-widest opacity-50">Chọn người nợ để thanh toán</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -908,6 +1251,135 @@ export default function App() {
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAddUserOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddUserOpen(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 10 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                    <UserIcon className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight">Thêm người dùng</h3>
+                    <p className="text-xs text-slate-500 font-medium">Tạo tài khoản mới cho hệ thống</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsAddUserOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                  <X className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1">Họ và tên</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="VD: Nguyễn Văn A"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
+                    value={newUser.fullname}
+                    onChange={(e) => setNewUser({...newUser, fullname: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1">Tên đăng nhập</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="VD: user01"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
+                    value={newUser.username}
+                    onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1">Mật khẩu</label>
+                  <input 
+                    type="password" 
+                    required
+                    placeholder="••••••••"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1">Vai trò</label>
+                  <div className="grid grid-cols-2 gap-3 mt-1">
+                    <button 
+                      type="button"
+                      onClick={() => setNewUser({...newUser, role: 'user'})}
+                      className={`py-3 rounded-xl border text-xs font-bold transition-all ${newUser.role === 'user' ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200' : 'bg-white text-slate-500 border-slate-200'}`}
+                    >
+                      USER
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setNewUser({...newUser, role: 'admin'})}
+                      className={`py-3 rounded-xl border text-xs font-bold transition-all ${newUser.role === 'admin' ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200' : 'bg-white text-slate-500 border-slate-200'}`}
+                    >
+                      ADMIN
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddUserOpen(false)}
+                    className="flex-1 py-3 px-4 border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all text-sm"
+                  >
+                    Hủy
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-[2] py-3 px-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all text-sm"
+                  >
+                    Tạo tài khoản
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Notifications */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
+              notification.type === 'success' 
+                ? 'bg-slate-900 border-slate-800 text-white' 
+                : 'bg-rose-600 border-rose-500 text-white'
+            }`}
+          >
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-white" />
+            )}
+            <span className="text-sm font-bold tracking-tight">{notification.message}</span>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

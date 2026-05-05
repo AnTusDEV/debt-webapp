@@ -22,7 +22,7 @@ const dbConfig = {
   host: process.env.DB_HOST || 'sql.freedb.tech',
   user: process.env.DB_USER || 'u_CnYAf8',
   password: process.env.DB_PASS || 'xzh9p9vNPI2F',
-  database: process.env.DB_NAME || 'freedb_debt_tracker', // Check your FreeDB dashboard for the exact name
+  database: process.env.DB_NAME || 'freedb_QO4yx7Bw', // Check your FreeDB dashboard for the exact name
 };
 
 const JWT_SECRET = process.env.JWT_SECRET || 'debt-tracker-secret-key';
@@ -42,11 +42,17 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(255) NOT NULL UNIQUE,
+        fullname VARCHAR(255),
         password VARCHAR(255) NOT NULL,
         role ENUM('admin', 'user') DEFAULT 'user',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Ensure 'fullname' column exists in 'users'
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN fullname VARCHAR(255) AFTER username');
+    } catch (e) {}
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS debtors (
@@ -88,19 +94,19 @@ async function initDb() {
     } catch (e) {}
 
     // Create default accounts if not exists
-    const createDefaultAccount = async (username: string, pass: string, role: string) => {
+    const createDefaultAccount = async (username: string, fullname: string, pass: string, role: string) => {
       const [rows]: any = await connection.query('SELECT * FROM users WHERE username = ?', [username]);
       if (rows.length === 0) {
         const hashedPassword = await bcrypt.hash(pass, 10);
-        const [result]: any = await connection.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hashedPassword, role]);
+        const [result]: any = await connection.query('INSERT INTO users (username, fullname, password, role) VALUES (?, ?, ?, ?)', [username, fullname, hashedPassword, role]);
         console.log(`Default ${role} created: ${username} / ${pass}`);
         return result.insertId;
       }
       return rows[0].id;
     };
 
-    const adminId = await createDefaultAccount('admin', 'admin123', 'admin');
-    await createDefaultAccount('user', 'user123', 'user');
+    const adminId = await createDefaultAccount('admin', 'Administrator', 'admin123', 'admin');
+    await createDefaultAccount('user', 'Người dùng mẫu', 'user123', 'user');
 
     // Add sample data if empty
     const [debtRows]: any = await connection.query('SELECT COUNT(*) as count FROM debts');
@@ -165,8 +171,8 @@ app.post('/api/login', async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role, fullname: user.fullname }, JWT_SECRET);
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role, fullname: user.fullname } });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -288,6 +294,34 @@ app.get('/api/admin/stats', authenticateToken, async (req: any, res) => {
       }
     });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/users', authenticateToken, async (req: any, res) => {
+  if (req.user.role !== 'admin') return res.sendStatus(403);
+  try {
+    const [rows] = await pool.query('SELECT id, username, fullname, role, created_at FROM users ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/users', authenticateToken, async (req: any, res) => {
+  if (req.user.role !== 'admin') return res.sendStatus(403);
+  const { username, password, fullname, role } = req.body;
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await pool.query(
+      'INSERT INTO users (username, password, fullname, role) VALUES (?, ?, ?, ?)',
+      [username, hashedPassword, fullname, role || 'user']
+    );
+    res.status(201).json({ message: 'User created successfully' });
+  } catch (error: any) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
     res.status(500).json({ error: error.message });
   }
 });

@@ -39,4 +39,6 @@ export const api = {
   updateDebtStatus: (id: number, status: string) => api.request(`/debts/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   payAllDebts: (debtorId: number) => api.request(`/debtors/${debtorId}/pay-all`, { method: 'PATCH' }),
   getAdminStats: () => api.request('/admin/stats'),
+  getAdminUsers: () => api.request('/admin/users'),
+  addAdminUser: (user: any) => api.request('/admin/users', { method: 'POST', body: JSON.stringify(user) }),
 };
