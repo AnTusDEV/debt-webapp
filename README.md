@@ -34,17 +34,27 @@ Một ứng dụng quản lý công nợ hiện đại, bảo mật và trực q
 
 ## 📦 Cài đặt và Chạy thử
 
-1. Cài đặt dependencies:
+1. **Cài đặt dependencies:**
    ```bash
    npm install
    ```
 
-2. Chạy môi trường phát triển:
+2. **Cấu hình Cơ sở dữ liệu:**
+   - Đảm bảo bạn đã cài đặt MySQL/MariaDB trên máy local.
+   - Tạo một database mới (ví dụ: `debt_tracker`).
+   - Sao chép file `.env.example` thành `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Cập nhật thông tin kết nối DB trong file `.env` (DB_HOST, DB_USER, DB_PASS, DB_NAME).
+
+3. **Chạy môi trường phát triển:**
    ```bash
    npm run dev
    ```
+   *Hệ thống sẽ tự động khởi tạo các bảng cần thiết và dữ liệu mẫu khi chạy lần đầu.*
 
-3. Xây dựng bản sản xuất:
+4. **Xây dựng bản sản xuất:**
    ```bash
    npm run build
    ```

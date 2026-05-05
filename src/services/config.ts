@@ -4,7 +4,7 @@
  */
 
 export const API_CONFIG = {
-  BASE_URL: 'https://ais-dev-ymafo7jrnafxsx5yppdklu-557970887341.asia-southeast1.run.app',
+  BASE_URL: typeof window !== 'undefined' ? window.location.origin : '',
   API_PREFIX: '/api'
 };
 
