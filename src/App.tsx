@@ -373,52 +373,48 @@ export default function App() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-slate-50">
-        <div className="p-4 md:p-8 w-full max-w-7xl mx-auto space-y-8 pb-20">
-          {user.role !== 'admin' && (
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b border-slate-100 md:relative md:top-0 md:z-0 md:bg-transparent md:mx-0 md:px-0 md:py-0 md:border-none md:gap-2 md:mb-2">
-              <button 
-                onClick={() => setViewMode('dashboard')}
-                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'dashboard' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
-              >
-                <PieIcon className="w-3.5 h-3.5 hidden md:block" />
-                Tổng quan
-              </button>
-              <button 
-                onClick={() => setViewMode('history')}
-                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'history' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
-              >
-                <Clock className="w-3.5 h-3.5 hidden md:block" />
-                Dòng tiền nợ
-              </button>
-              <button 
-                onClick={() => setViewMode('debtors')}
-                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'debtors' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
-              >
-                <UserIcon className="w-3.5 h-3.5 hidden md:block" />
-                Người sổ nợ
-              </button>
-            </div>
-          )}
-
-          {user.role === 'admin' && (
-             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b border-slate-100 md:relative md:top-0 md:z-0 md:bg-transparent md:mx-0 md:px-0 md:py-0 md:border-none md:gap-2 md:mb-2">
-              <button 
-                onClick={() => setViewMode('dashboard')}
-                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'dashboard' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                Hệ thống
-              </button>
-              <button 
-                onClick={() => setViewMode('users')}
-                className={`px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black md:font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-wider md:tracking-normal md:normal-case ${viewMode === 'users' ? 'bg-slate-900 text-white shadow-md' : 'bg-transparent md:bg-white text-slate-500 md:border md:border-slate-200 hover:bg-slate-100'}`}
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                Người dùng
-              </button>
-            </div>
-          )}
+      <main className="flex-1 overflow-y-auto bg-slate-50 pb-24 md:pb-8">
+        <div className="p-4 md:p-8 w-full max-w-7xl mx-auto space-y-8">
+          {/* Top Tabs - Only for Desktop */}
+          <div className="hidden md:flex items-center gap-2 mb-6">
+            {user.role === 'admin' ? (
+              <>
+                <button 
+                  onClick={() => setViewMode('dashboard')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'dashboard' ? 'bg-slate-900 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'}`}
+                >
+                  <BarChart3 className="w-4 h-4" /> Hệ thống
+                </button>
+                <button 
+                  onClick={() => setViewMode('users')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'users' ? 'bg-slate-900 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'}`}
+                >
+                  <UserIcon className="w-4 h-4" /> Người dùng
+                </button>
+              </>
+            ) : (
+              <>
+                <button 
+                  onClick={() => setViewMode('dashboard')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'dashboard' ? 'bg-slate-900 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'}`}
+                >
+                  <PieIcon className="w-4 h-4" /> Tổng quan
+                </button>
+                <button 
+                  onClick={() => setViewMode('history')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'history' ? 'bg-slate-900 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'}`}
+                >
+                  <Clock className="w-4 h-4" /> Dòng tiền
+                </button>
+                <button 
+                  onClick={() => setViewMode('debtors')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'debtors' ? 'bg-slate-900 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'}`}
+                >
+                  <UserIcon className="w-4 h-4" /> Sổ nợ
+                </button>
+              </>
+            )}
+          </div>
 
           {viewMode === 'dashboard' ? (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -1367,7 +1363,7 @@ export default function App() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
+            className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
               notification.type === 'success' 
                 ? 'bg-slate-900 border-slate-800 text-white' 
                 : 'bg-rose-600 border-rose-500 text-white'
@@ -1382,6 +1378,52 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Bottom Navigation - Mobile Only */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-t border-slate-200 px-6 py-3 flex items-center justify-around shadow-[0_-4px_24px_-4px_rgba(0,0,0,0.05)]">
+        {user.role === 'admin' ? (
+          <>
+            <button 
+              onClick={() => setViewMode('dashboard')}
+              className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'dashboard' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Hệ thống</span>
+            </button>
+            <button 
+              onClick={() => setViewMode('users')}
+              className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'users' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+            >
+              <UserIcon className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Người dùng</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button 
+              onClick={() => setViewMode('dashboard')}
+              className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'dashboard' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+            >
+              <PieIcon className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Home</span>
+            </button>
+            <button 
+              onClick={() => setViewMode('history')}
+              className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'history' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+            >
+              <Clock className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Dòng tiền</span>
+            </button>
+            <button 
+              onClick={() => setViewMode('debtors')}
+              className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'debtors' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+            >
+              <UserIcon className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Sổ nợ</span>
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
